@@ -1,0 +1,23 @@
+{
+  "name": "aidevs4",
+  "version": "1.0.0",
+  "description": "Projekt AI Devs 4",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsx src/runner.ts",
+    "dev": "tsx watch src/index.ts",
+    "run": "tsx",
+    "build": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
