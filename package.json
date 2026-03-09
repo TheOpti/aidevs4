@@ -5,7 +5,6 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "tsx src/runner.ts",
-    "dev": "tsx watch src/index.ts",
     "run": "tsx",
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -21,6 +20,9 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.5"
+    "axios": "^1.13.6",
+    "dotenv": "^16.4.5",
+    "openai": "^6.27.0",
+    "zod": "^4.3.6"
   }
 }
