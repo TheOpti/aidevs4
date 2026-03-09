@@ -1,1 +1,1 @@
-console.log("✅ Success! Parameterized start script works!");
+console.log('✅ Success! Parameterized start script works!');
