@@ -5,11 +5,13 @@ import { join, resolve } from 'node:path';
 const currentDir = __dirname;
 
 const folderName = process.argv[2];
+const fileName = process.argv[3];
 
 if (!folderName) {
   console.error('❌ Please provide a folder name.');
-  console.error('Usage: npm start <folderName>');
-  console.error('Example: npm start S01E01');
+  console.error('Usage: npm start <folderName> [fileName]');
+  console.error('Example (runs first .ts file): npm start S01E01');
+  console.error('Example (runs specific file): npm start S01E02 findhim_ts.ts');
   process.exit(1);
 }
 
@@ -18,11 +20,20 @@ const baseDir = resolve(currentDir, 'course', folderName);
 async function run() {
   try {
     const files = await readdir(baseDir);
-    const tsFile = files.find((f) => f.endsWith('.ts'));
+    let tsFile: string | undefined;
 
-    if (!tsFile) {
-      console.error(`❌ No .ts file found in: ${baseDir}`);
-      process.exit(1);
+    if (fileName) {
+      tsFile = files.find((f) => f === fileName || f === `${fileName}.ts`);
+      if (!tsFile) {
+        console.error(`❌ File '${fileName}' not found in: ${baseDir}`);
+        process.exit(1);
+      }
+    } else {
+      tsFile = files.find((f) => f.endsWith('.ts'));
+      if (!tsFile) {
+        console.error(`❌ No .ts file found in: ${baseDir}`);
+        process.exit(1);
+      }
     }
 
     const filePath = join(baseDir, tsFile);
