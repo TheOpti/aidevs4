@@ -1,10 +1,11 @@
 import axios from 'axios';
 import 'dotenv/config';
 import * as fs from 'fs';
-import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import * as path from 'path';
 import { z } from 'zod';
+import { MODEL_GPT_OSS, log, openai } from '../../shared/agents';
+import { S01E01, sendResult } from '../../shared/api';
 
 type Person = {
   id: number;
@@ -26,11 +27,7 @@ Opisy tagów:
 - praca z pojazdami: kierowanie, naprawa, obsługa maszyn transportowych.
 - praca fizyczna: wysiłek fizyczny, rzemiosło.`;
 
-// Configuration
-const CSV_URL = `${process.env.BASE_URL}/data/${process.env.AIDEVS_API_KEY}/people.csv`;
-const VERIFY_URL = '${process.env.BASE_URL}/verify';
-
-const openai = new OpenAI({ baseURL: 'http://localhost:1234/v1', apiKey: 'lm-studio' });
+const { CSV_URL } = S01E01;
 
 // Schema for Structured Output
 const TaggingResponse = z.object({
@@ -44,19 +41,19 @@ const TaggingResponse = z.object({
 
 async function solveTask() {
   try {
-    const resultsFilePath = path.join(__dirname, 'people_results.json');
+    const resultsFilePath = path.join(__dirname, '../../data/people_results.json');
     let finalSelection: any;
 
     if (fs.existsSync(resultsFilePath)) {
-      console.log('Found people_results.json, skipping LLM and reusing data...');
+      log.info('Found people_results.json, skipping LLM and reusing data...');
       finalSelection = JSON.parse(fs.readFileSync(resultsFilePath, 'utf-8'));
     }
 
     if (!finalSelection) {
       // 1. Fetch data
-      console.log('=== Step 1 ===========');
-      console.log('Fetching data...');
-      const response = await axios.get(CSV_URL);
+      log.step(1, 'Fetch people data');
+      log.info('Fetching data from CSV...');
+      const response = await axios.get(CSV_URL!);
       const csvData = response.data;
 
       // Simple CSV parsing (assuming no commas inside quoted descriptions)
@@ -65,7 +62,7 @@ async function solveTask() {
       const people: Person[] = rows
         .map((row: string, index: number) => {
           // Regex to handle fields in quotes
-          const matches = row.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
+          const matches = row.match(/(\".*?\"|[^,]+)(?=\s*,|\s*$)/g);
           if (!matches) return null;
 
           const [name, surname, gender, birthDate, birthPlace, birthCountry, job] = matches.map(
@@ -75,10 +72,9 @@ async function solveTask() {
         })
         .filter(Boolean);
 
-      // 2. Initial filtering (Men, Gdańsk, Age 20-40 in 2026)
+      // 2. Initial filtering (Men, Grudziądz, Age 20-40 in 2026)
       // Birth year must be between 1986 and 2006
-      console.log('=== Step 2 ===========');
-      console.log('Filtering people...');
+      log.step(2, 'Filter people (gender=M, city=Grudziądz, age 20-40 in 2026)');
       const filteredPeople = people.filter((p) => {
         const birthYear = parseInt(p.birthDate.split('-')[0]);
         return (
@@ -86,16 +82,15 @@ async function solveTask() {
         );
       });
 
-      console.log(`People after initial filtering: ${filteredPeople.length}`);
+      log.info(`People after initial filtering: ${filteredPeople.length}`);
 
       if (filteredPeople.length === 0) {
-        console.log('No people found after initial filtering.');
+        log.info('No people found after initial filtering.');
         return;
       }
 
       // 3. Tagging jobs through LLM (Batch tagging)
-      console.log('=== Step 3 ===========');
-      console.log('Tagging jobs - sending a request to local LM Studio...');
+      log.step(3, 'Tag jobs via LLM (batch)');
 
       const CHUNK_SIZE = 16;
       const taggedResults: { id: number; tags: string[] }[] = [];
@@ -104,10 +99,10 @@ async function solveTask() {
         const chunk = filteredPeople.slice(i, i + CHUNK_SIZE);
         const jobDescriptions = chunk.map((p) => `ID: ${p.id} | Opis: ${p.job}`).join('\n');
 
-        console.log(`Processing chunk ${i / CHUNK_SIZE + 1}...`);
+        log.info(`Processing chunk ${i / CHUNK_SIZE + 1}...`);
 
         const completion = await openai.chat.completions.parse({
-          model: 'qwen3.5-9b',
+          model: MODEL_GPT_OSS,
           messages: [
             { role: 'system', content: TAGGING_INSTRUCTION },
             { role: 'user', content: jobDescriptions },
@@ -121,8 +116,7 @@ async function solveTask() {
       }
 
       // 4. Connect data and filter only 'transport' tag
-      console.log('=== Step 4 ===========');
-      console.log('Connecting data and filtering...');
+      log.step(4, 'Join tags, keep only transport workers');
 
       finalSelection = filteredPeople
         .map((p) => {
@@ -138,26 +132,17 @@ async function solveTask() {
         })
         .filter((p) => p.tags.includes('transport'));
 
-      console.log(`Found ${finalSelection.length} people working in transport.`);
+      log.result(`Found ${finalSelection.length} people working in transport`);
 
       fs.writeFileSync(resultsFilePath, JSON.stringify(finalSelection, null, 2));
-      console.log(`Saved finalSelection to ${resultsFilePath}`);
+      log.info(`Saved results to ${resultsFilePath}`);
     }
 
     // 5. Send response
-    console.log('=== Step 5 ===========');
-    console.log('Sending response...');
-
-    const payload = {
-      task: 'people',
-      apikey: process.env.AIDEVS_API_KEY,
-      answer: finalSelection,
-    };
-
-    const verifyResponse = await axios.post(VERIFY_URL, payload);
-    console.log('Server response:', verifyResponse.data);
+    log.step(5, 'Submit answer');
+    await sendResult('people', finalSelection);
   } catch (error) {
-    console.error('Error:', error);
+    log.error('Unexpected error', error);
   }
 }
 

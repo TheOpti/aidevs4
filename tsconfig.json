@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@data/*": ["src/data/*"]
+    },
     "target": "ES2022",
     "module": "CommonJS",
     "rootDir": "./src",

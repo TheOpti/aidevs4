@@ -1,11 +1,12 @@
 import axios from 'axios';
 import 'dotenv/config';
+import { log } from '../../shared/agents';
+import { S01E02 } from '../../shared/api';
 
-// Configuration
-export const POWER_PLANTS_URL = `${process.env.BASE_URL}/data/${process.env.AIDEVS_API_KEY}/findhim_locations.json`;
-export const LOCATION_URL = '${process.env.BASE_URL}/api/location';
-export const ACCESS_LEVEL_URL = '${process.env.BASE_URL}/api/accesslevel';
-export const VERIFY_URL = '${process.env.BASE_URL}/verify';
+// Re-export so existing importers keep working without change
+export const POWER_PLANTS_URL = S01E02.POWER_PLANTS_URL;
+export const LOCATION_URL = S01E02.LOCATION_URL;
+export const ACCESS_LEVEL_URL = S01E02.ACCESS_LEVEL_URL;
 
 export const PLANT_COORDS: Record<string, { lat: number; lon: number }> = {
   Zabrze: { lat: 50.3249, lon: 18.7857 },
@@ -18,7 +19,7 @@ export const PLANT_COORDS: Record<string, { lat: number; lon: number }> = {
 };
 
 export async function getClosestPlantForPerson(name: string, surname: string) {
-  console.log(`[Tool Call] getClosestPlantForPerson for ${name} ${surname}...`);
+  log.tool('getClosestPlantForPerson', { name, surname });
   const locations = await getLocations(name, surname);
   if (!locations || !Array.isArray(locations) || locations.length === 0) {
     return { error: 'No valid locations found' };
@@ -42,7 +43,7 @@ export async function findClosestToPlants(
   userLocations: { lat: number; lon: number }[],
   plantLocations: { lat: number; lon: number; name?: string }[],
 ) {
-  console.log(`Finding closest to each Power Plant for ${user.name} ${user.surname}...`);
+  log.info(`Finding closest power plant for ${user.name} ${user.surname}...`);
   let minDistance = Infinity;
   let closestLocation = null;
   let closestPlantName = 'Unknown';
@@ -80,8 +81,7 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 }
 
 export async function getLocations(name: string, surname: string) {
-  // Returns list of coordinates or string
-  console.log(`Fetching locations for name: ${name} surname: ${surname}...`);
+  log.api('location', { name, surname });
 
   try {
     const res = await axios.post(LOCATION_URL, {
@@ -92,18 +92,16 @@ export async function getLocations(name: string, surname: string) {
 
     return res.data;
   } catch (error: any) {
-    console.error('Error fetching locations:', error.message, error.description);
+    log.error('Error fetching locations', error.message);
     return;
   }
 }
 
 export async function getAccessLevel(name: string, surname: string, birthDate: string | number) {
-  console.log(
-    `Fetching access level for name: ${name}, surname: ${surname}, birthYear: ${birthDate}...`,
-  );
-
   // Extracting year from YYYY-MM-DD format or keeping it if it's already a year
   const birthYear = typeof birthDate === 'string' ? parseInt(birthDate.split('-')[0]) : birthDate;
+
+  log.api('accesslevel', { name, surname, birthYear });
 
   try {
     const res = await axios.post(ACCESS_LEVEL_URL, {
@@ -113,37 +111,12 @@ export async function getAccessLevel(name: string, surname: string, birthDate: s
       birthYear,
     });
 
-    console.log(`Access level for ${name} ${surname}: ${res.data}`);
+    log.result(`Access level for ${name} ${surname}`, res.data);
     return res.data;
   } catch (error: any) {
-    console.error('Error fetching access level:', error.message, error.description);
+    log.error('Error fetching access level', error.message);
     return;
   }
 }
 
-export async function submitAnswer(answer: {
-  name: string;
-  surname: string;
-  accessLevel: number;
-  powerPlant: string;
-}) {
-  console.log(
-    `Submitting answer for ${answer.name} ${answer.surname} [accessLevel: ${answer.accessLevel}, powerPlant: ${answer.powerPlant}]...`,
-  );
-  try {
-    const res = await axios.post(VERIFY_URL, {
-      apikey: process.env.AIDEVS_API_KEY,
-      task: 'findhim',
-      answer,
-    });
-    console.log('Submit answer response:', res.data);
-    return res.data;
-  } catch (error: any) {
-    console.error(
-      'Error submitting answer:',
-      error.message,
-      error.response?.data || error.description,
-    );
-    return;
-  }
-}
+

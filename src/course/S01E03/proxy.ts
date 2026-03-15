@@ -2,11 +2,11 @@ import axios from 'axios';
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import { OpenAI } from 'openai';
+import { MODEL_GPT_OSS, log, openai } from '../../shared/agents';
+import { S01E03 } from '../../shared/api';
 
 const app = express();
 app.use(express.json());
-
-const openai = new OpenAI({ baseURL: 'http://localhost:1234/v1', apiKey: 'lm-studio' });
 
 const SYSTEM_PROMPT = `Jesteś doświadczonym dyspozytorem w firmie logistycznej. 
 Rozmawiasz z innymi pracownikami na wewnętrznym czacie. 
@@ -101,9 +101,9 @@ function getManagedContext(sessionId: string, slidingWindowSize: number = 8) {
 }
 
 async function callPackagesAPI(action: 'check' | 'redirect', payload: any) {
-  console.log(`[API Call] Action: ${action}`, payload);
+  log.api(action, payload);
 
-  const response = await axios.post('${process.env.BASE_URL}/api/packages', {
+  const response = await axios.post(S01E03.PACKAGES_URL, {
     apikey: process.env.AIDEVS_API_KEY,
     action,
     packageid: payload.packageid,
@@ -116,7 +116,7 @@ async function callPackagesAPI(action: 'check' | 'redirect', payload: any) {
     }),
   });
 
-  console.log(`[API Call] Response:`, response.data);
+  log.result('Packages API response', response.data);
   return response.data;
 }
 
@@ -133,16 +133,16 @@ app.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 
   sessions[sessionID].push({ role: 'user', content: msg });
-  console.log(`[Session ${sessionID}] User message: ${msg}`);
+  log.info(`[Session ${sessionID}] User: ${msg}`);
 
   try {
     let iterations = 0;
     let finalContent = '';
 
     while (iterations < 10) {
-      console.log(`[Session ${sessionID}] Iteration ${iterations + 1}...`);
+      log.info(`[Session ${sessionID}] Iteration ${iterations + 1}...`);
       const completion = await openai.chat.completions.parse({
-        model: 'openai/gpt-oss-20b',
+        model: MODEL_GPT_OSS,
         messages: getManagedContext(sessionID, 10),
         tools: tools,
       });
@@ -155,14 +155,15 @@ app.post('/', async (req: Request, res: Response): Promise<void> => {
       }
 
       if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        console.log(`[Session ${sessionID}] Model wants to call tools`);
+        log.info(`[Session ${sessionID}] Model wants to call tools`);
 
         for (const toolCall of responseMessage.tool_calls) {
-          console.log(`[Session ${sessionID}] Tool call:`, { toolCall });
           if (toolCall.type !== 'function') continue;
 
           const functionName = toolCall.function.name;
           const args = JSON.parse(toolCall.function.arguments);
+
+          log.tool(functionName, args);
 
           let result;
           if (functionName === 'check_package') {
@@ -180,21 +181,19 @@ app.post('/', async (req: Request, res: Response): Promise<void> => {
 
         iterations++;
       } else {
-        console.log(
-          `[Session ${sessionID}] No more tools to call, processing final textual response.`,
-        );
+        log.info(`[Session ${sessionID}] No more tools to call, sending final response`);
         break;
       }
     }
 
     const cleanedMsg = finalContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    console.log(`[Session ${sessionID}] Final response: ${cleanedMsg}`);
+    log.result(`[Session ${sessionID}] Final response: ${cleanedMsg}`);
     res.json({ msg: cleanedMsg || 'Jasne, co jeszcze mogę dla Ciebie zrobić?' });
   } catch (error: any) {
-    console.error(`[Session ${sessionID}] Error:`, error);
+    log.error(`[Session ${sessionID}] Unhandled error`, error);
     res.status(500).json({ msg: 'Error on server side.' });
   }
 });
 
 const PORT = 3000;
-app.listen(PORT, () => console.log(`Server running on port: ${PORT}`));
+app.listen(PORT, () => log.info(`Server running on port ${PORT}`));

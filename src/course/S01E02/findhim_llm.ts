@@ -1,52 +1,43 @@
 import axios from 'axios';
 import 'dotenv/config';
 import * as fs from 'fs';
-import OpenAI from 'openai';
+import type OpenAI from 'openai';
 import * as path from 'path';
-import { getAccessLevel, getClosestPlantForPerson, submitAnswer } from './utils';
+import { MODEL_GPT_OSS, log, openai } from '../../shared/agents';
+import { S01E02, sendResult } from '../../shared/api';
+import { getAccessLevel, getClosestPlantForPerson } from './utils';
 
-const openai = new OpenAI({ baseURL: 'http://localhost:1234/v1', apiKey: 'lm-studio' });
-
-// Configuration
-const POWER_PLANTS_URL = `${process.env.BASE_URL}/data/${process.env.AIDEVS_API_KEY}/findhim_locations.json`;
-
-/*
-Strategia naprawcza w 3 krokach:
-Uprość narzędzia: Zmień findClosestToPlants tak, by przyjmowało tylko name i surname. Pobieraj lokalizacje wewnątrz tej funkcji w TS, a modelowi zwróć tylko gotowy wynik (np. "Najbliższa elektrownia to X, dystans Y").
-Loguj wszystko: Dodaj console.dir(message, { depth: null }), aby zobaczyć, czy model przypadkiem nie zwraca błędów w formacie JSON, których JSON.parse nie potrafi ugryźć.
-Prompt Engineering: Dodaj do system prompt zdanie: "Jeśli nie masz nic więcej do dodania i posiadasz wszystkie dane, użyj funkcji submitAnswer. Nie powtarzaj się."
-*/
+const { POWER_PLANTS_URL } = S01E02;
 
 async function solveTask() {
-  const powerPlantsFile = path.join(__dirname, 'power_plants.json');
+  const powerPlantsFile = path.join(__dirname, '../../data/power_plants.json');
   let suspectedPeople, powerPlantsData;
 
   // 1. Load suspected people data from previous task
-  console.log('=== Step 1 ===========');
-  console.log('Getting list of suspected people from previous task...');
-  const peopleResultsFile = path.join(__dirname, '../S01E01/people_results.json');
+  log.step(1, 'Load suspected people from previous task');
+  const peopleResultsFile = path.join(__dirname, '../../data/people_results.json');
 
   if (!fs.existsSync(peopleResultsFile)) {
-    console.log('File people_results.json not found in S01E01 folder. Leaving script...');
+    log.error('File people_results.json not found in data folder. Leaving script...');
     return;
   }
 
   suspectedPeople = JSON.parse(fs.readFileSync(peopleResultsFile, 'utf-8'));
-  console.log(`Loaded ${suspectedPeople.length} suspected people from people_results.json.`);
+  log.info(`Loaded ${suspectedPeople.length} suspected people from people_results.json`);
 
   // 2. Fetch data about power plants
-  console.log('=== Step 2 ===========');
+  log.step(2, 'Load power plants data');
   if (fs.existsSync(powerPlantsFile)) {
-    console.log('Reusing local power_plants.json...');
+    log.info('Reusing local power_plants.json...');
     powerPlantsData = JSON.parse(fs.readFileSync(powerPlantsFile, 'utf-8'));
   } else {
-    console.log('Getting power plants data...');
+    log.info('Fetching power plants data from remote...');
 
     const response = await axios.get(POWER_PLANTS_URL);
     powerPlantsData = response.data;
 
     fs.writeFileSync(powerPlantsFile, JSON.stringify(powerPlantsData, null, 2));
-    console.log(`Saved power plants data to ${powerPlantsFile}`);
+    log.info(`Saved power plants data to ${powerPlantsFile}`);
   }
 
   // 3. Use model and define tools
@@ -138,19 +129,20 @@ async function solveTask() {
   ];
 
   // --- AGENT LOOP ---
+  log.step(3, 'Run agent loop');
   let iterations = 0;
   while (iterations < 50) {
-    console.log(`[Iteration] ${iterations + 1}...`);
+    log.info(`Iteration ${iterations + 1}...`);
     iterations++;
 
     const response = await openai.chat.completions.parse({
-      model: 'qwen3.5-9b',
+      model: MODEL_GPT_OSS,
       messages,
       tools,
     });
 
     const message = response.choices[0].message;
-    console.log('Message:', message);
+    log.result('Model response', message);
 
     const messageToPush = {
       role: message.role,
@@ -163,15 +155,19 @@ async function solveTask() {
       const args = JSON.parse(toolCall.function.arguments);
       let result;
 
-      console.log(`[Tool Call] ${toolCall.function.name}...`);
+      log.tool(toolCall.function.name, args);
 
       if (toolCall.function.name === 'getClosestPlantForPerson') {
         result = await getClosestPlantForPerson(args.name, args.surname);
       } else if (toolCall.function.name === 'getAccessLevel') {
         result = await getAccessLevel(args.name, args.surname, args.birthDate);
       } else if (toolCall.function.name === 'submitAnswer') {
-        result = await submitAnswer(args.answer);
-        console.log('Answer submitted, stopping the agent.');
+        const a = args.answer;
+        log.info(
+          `Submitting answer for ${a.name} ${a.surname} [accessLevel: ${a.accessLevel}, powerPlant: ${a.powerPlant}]`,
+        );
+        result = await sendResult('findhim', a);
+        log.result('Answer submitted, stopping the agent');
         return;
       }
 
