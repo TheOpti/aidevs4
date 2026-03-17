@@ -11,6 +11,9 @@ export const MODEL_QWEN = 'qwen3.5-9b';
 /** OpenAI-compatible OSS model (e.g. served via proxy / LM Studio) */
 export const MODEL_GPT_OSS = 'openai/gpt-oss-20b';
 
+/** Google Gemma 3 with vision capabilities */
+export const MODEL_GEMMA = 'google/gemma-3-12b';
+
 // ============================================================
 // OpenAI client factory
 // ============================================================
@@ -47,13 +50,10 @@ export const openai = createOpenAIClient();
  *   log.error('Failed', err)        →  [Error] Failed
  */
 export const log = {
-  step: (n: number, description: string) =>
-    console.log(`\n[Step ${n}] ${description}`),
+  step: (n: number, description: string) => console.log(`\n[Step ${n}] ${description}`),
 
   info: (message: string, data?: unknown) =>
-    data !== undefined
-      ? console.log(`[Info] ${message}`, data)
-      : console.log(`[Info] ${message}`),
+    data !== undefined ? console.log(`[Info] ${message}`, data) : console.log(`[Info] ${message}`),
 
   tool: (name: string, data?: unknown) =>
     data !== undefined
@@ -70,6 +70,5 @@ export const log = {
       ? console.log(`[Result] ${message}`, data)
       : console.log(`[Result] ${message}`),
 
-  error: (message: string, err?: unknown) =>
-    console.error(`[Error] ${message}`, err ?? ''),
+  error: (message: string, err?: unknown) => console.error(`[Error] ${message}`, err ?? ''),
 };
