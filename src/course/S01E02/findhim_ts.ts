@@ -2,14 +2,8 @@ import axios from 'axios';
 import * as fs from 'fs';
 import path from 'path';
 import { log } from '../../shared/agents';
-import { sendResult } from '../../shared/api';
-import {
-  PLANT_COORDS,
-  POWER_PLANTS_URL,
-  findClosestToPlants,
-  getAccessLevel,
-  getLocations,
-} from './utils';
+import { S01E02, sendResult } from '../../shared/api';
+import { PLANT_COORDS, findClosestToPlants, getAccessLevel, getLocations } from './utils';
 
 const powerPlantsFile = path.join(__dirname, '../../data/power_plants.json');
 let suspectedPeople, powerPlantsData;
@@ -35,7 +29,7 @@ async function solveTask() {
   } else {
     log.info('Fetching power plants data from remote...');
 
-    const response = await axios.get(POWER_PLANTS_URL);
+    const response = await axios.get(S01E02.POWER_PLANTS_URL);
     powerPlantsData = response.data;
 
     fs.writeFileSync(powerPlantsFile, JSON.stringify(powerPlantsData, null, 2));

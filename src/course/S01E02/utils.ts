@@ -1,12 +1,7 @@
 import axios from 'axios';
 import 'dotenv/config';
+import { S01E02 } from 'src/shared/api';
 import { log } from '../../shared/agents';
-import { S01E02 } from '../../shared/api';
-
-// Re-export so existing importers keep working without change
-export const POWER_PLANTS_URL = S01E02.POWER_PLANTS_URL;
-export const LOCATION_URL = S01E02.LOCATION_URL;
-export const ACCESS_LEVEL_URL = S01E02.ACCESS_LEVEL_URL;
 
 export const PLANT_COORDS: Record<string, { lat: number; lon: number }> = {
   Zabrze: { lat: 50.3249, lon: 18.7857 },
@@ -84,7 +79,7 @@ export async function getLocations(name: string, surname: string) {
   log.api('location', { name, surname });
 
   try {
-    const res = await axios.post(LOCATION_URL, {
+    const res = await axios.post(S01E02.LOCATION_URL, {
       apikey: process.env.AIDEVS_API_KEY,
       name,
       surname,
@@ -104,7 +99,7 @@ export async function getAccessLevel(name: string, surname: string, birthDate: s
   log.api('accesslevel', { name, surname, birthYear });
 
   try {
-    const res = await axios.post(ACCESS_LEVEL_URL, {
+    const res = await axios.post(S01E02.ACCESS_LEVEL_URL, {
       apikey: process.env.AIDEVS_API_KEY,
       name,
       surname,
@@ -118,5 +113,3 @@ export async function getAccessLevel(name: string, surname: string, birthDate: s
     return;
   }
 }
-
-
