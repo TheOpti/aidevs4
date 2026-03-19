@@ -14,6 +14,9 @@ export const MODEL_GPT_OSS = 'openai/gpt-oss-20b';
 /** Google Gemma 3 with vision capabilities */
 export const MODEL_GEMMA = 'google/gemma-3-12b';
 
+/** DeepSeek v 3.2 */
+export const MODEL_DEEPSEEK = 'deepseek/deepseek-v3.2';
+
 // ============================================================
 // OpenAI client factory
 // ============================================================
@@ -31,8 +34,16 @@ export function createOpenAIClient(): OpenAI {
   });
 }
 
+export function createOpenRouterAiClient(): OpenAI {
+  return new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
+  });
+}
+
 /** Pre-built default client — import this when a single shared instance is enough. */
 export const openai = createOpenAIClient();
+export const openrouter = createOpenRouterAiClient();
 
 // ============================================================
 // Unified logger

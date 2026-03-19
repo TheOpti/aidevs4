@@ -2,7 +2,7 @@ import axios from 'axios';
 import fs from 'fs';
 import OpenAI from 'openai';
 import path from 'path';
-import { log, MODEL_GEMMA, MODEL_GPT_OSS, openai } from 'src/shared/agents';
+import { log, MODEL_DEEPSEEK, MODEL_GEMMA, openai, openrouter } from 'src/shared/agents';
 import { sendResult } from 'src/shared/api';
 
 const DATA_DIR = path.join(process.cwd(), 'src', 'data');
@@ -18,7 +18,32 @@ if (fs.existsSync(DECLARATION_PATH)) {
   fs.unlinkSync(DECLARATION_PATH);
 }
 
-const SYSTEM_PROMPT = ``;
+const SYSTEM_PROMPT = `You are an expert in SPK transport declaration documents.
+
+Follow these steps IN ORDER. Do not skip any step. Do not call submitAnswer until step 3.
+
+STEP 1 — Download ALL documentation at once:
+  Call fetchTextFile("${process.env.BASE_URL}/dane/doc/index.md")
+  This single call will return the index AND every included file combined.
+  If there is an image file (e.g. .png, .jpg) in the documentation, call fetchImage tool to get its content.
+  Some files say you have no right to access them - ignore them.
+  There's also "WDP" key - you need to calculate how many additional wagons we might need.
+
+STEP 2 — Read all the returned content carefully.
+  Find the file that contains the declaration form template and use it as the EXACT format (file including "SYSTEM PRZESYŁEK KONDUKTORSKICH").
+  Fill in the following values:
+    - Data: ${new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+    - Nadawca (identyfikator): 450202122
+    - Punkt nadawczy: Gdańsk
+    - Punkt docelowy: Żarnowiec
+    - Waga: 2800 kg
+    - Budżet: 0 PP
+    - Zawartość: kasety z paliwem do reaktora
+    - Uwagi specjalne: (leave empty / brak)
+  Produce the complete, formatted declaration text exactly as the template specifies.
+
+STEP 3 — Once you have complete form, send it using submitAnswer tool. If there's an error, Come back to Step 2 and think which fields need to be changed.
+`;
 
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -68,16 +93,6 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'getProgress',
-      description:
-        'Returns list of already fetched files. Call this before fetching to avoid duplicates.',
-      strict: true,
-      parameters: { type: 'object', properties: {}, required: [], additionalProperties: false },
-    },
-  },
-  {
-    type: 'function',
-    function: {
       name: 'submitAnswer',
       description: 'Wysyła gotową deklarację do weryfikacji. Wywołaj dokładnie raz na końcu.',
       strict: true,
@@ -101,8 +116,6 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 ];
 
 const fetchedUrls = new Set<string>();
-const pendingFiles: string[] = [];
-const processedFiles: string[] = [];
 
 async function fetchTextFile(url: string): Promise<string> {
   if (/\.(png|jpg|jpeg|gif|webp)$/i.test(url)) {
@@ -114,7 +127,6 @@ async function fetchTextFile(url: string): Promise<string> {
   }
 
   fetchedUrls.add(url);
-  processedFiles.push(url);
   log.info(`[fetchTextFile] ${url}`);
 
   const response = await axios.get<string>(url, { responseType: 'text', timeout: 15000 });
@@ -123,7 +135,6 @@ async function fetchTextFile(url: string): Promise<string> {
 
 async function fetchImage(url: string, question: string): Promise<string> {
   log.info(`[fetchImage] ${url}`);
-  processedFiles.push(url);
 
   const response = await axios.get<ArrayBuffer>(url, {
     responseType: 'arraybuffer',
@@ -166,9 +177,6 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
       case 'fetchImage':
         return await fetchImage(args.url as string, args.question as string);
 
-      case 'getProgress':
-        return JSON.stringify({ fetched: processedFiles, pending: pendingFiles });
-
       case 'submitAnswer': {
         const answer = args.answer as { declaration: string };
         log.info(`Saving declaration to ${DECLARATION_PATH}...`);
@@ -200,8 +208,8 @@ async function solveTask() {
     log.info(`Iteration ${iterations + 1}...`);
     iterations++;
 
-    const response = await openai.chat.completions.create({
-      model: MODEL_GPT_OSS,
+    const response = await openrouter.chat.completions.create({
+      model: MODEL_DEEPSEEK,
       messages,
       tools,
       tool_choice: 'auto',
