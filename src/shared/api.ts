@@ -31,6 +31,10 @@ export const S02E03 = {
   LOGS: `${BASE_URL}/data/${process.env.AIDEVS_API_KEY}/failure.log`,
 };
 
+export const S02E04 = {
+  MAILBOX: `${BASE_URL}/api/zmail`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
