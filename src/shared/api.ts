@@ -27,6 +27,10 @@ export const S01E03 = {
   PACKAGES_URL: `${BASE_URL}/api/packages`,
 };
 
+export const S02E03 = {
+  LOGS: `${BASE_URL}/data/${process.env.AIDEVS_API_KEY}/failure.log`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
