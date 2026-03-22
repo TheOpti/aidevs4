@@ -7,6 +7,7 @@ import { log } from './agents';
 // ============================================================
 export const BASE_URL = process.env.BASE_URL as string;
 export const VERIFY_URL = `${BASE_URL}/verify`;
+export const DATA_BASE_URL = `${BASE_URL}/data/${process.env.AIDEVS_API_KEY}`;
 
 // ============================================================
 // Task-specific URLs grouped by episode
@@ -50,10 +51,7 @@ export async function sendResult(task: string, answer: unknown): Promise<unknown
     log.result(`Server response for task "${task}"`, response.data);
     return response.data;
   } catch (error: any) {
-    log.error(
-      `Failed to send result for task "${task}"`,
-      error.response?.data ?? error.message,
-    );
+    log.error(`Failed to send result for task "${task}"`, error.response?.data ?? error.message);
     throw error;
   }
 }

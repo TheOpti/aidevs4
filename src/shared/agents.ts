@@ -17,6 +17,9 @@ export const MODEL_GEMMA = 'google/gemma-3-12b';
 /** DeepSeek v 3.2 */
 export const MODEL_DEEPSEEK = 'deepseek/deepseek-v3.2';
 
+/** Google Gemini Flash 1.5 with vision capabilities */
+export const MODEL_GEMINI_VISION = 'google/gemini-2.0-flash-001';
+
 // ============================================================
 // OpenAI client factory
 // ============================================================
