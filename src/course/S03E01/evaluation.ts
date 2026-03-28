@@ -20,7 +20,7 @@ import fs from 'fs';
 import https from 'https';
 import os from 'os';
 import path from 'path';
-import { MODEL_DEEPSEEK, openrouter } from 'src/shared/agents';
+import { log, MODEL_DEEPSEEK, openrouter } from 'src/shared/agents';
 import { S03E01, VERIFY_URL } from 'src/shared/api';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -164,33 +164,35 @@ async function llmCheckNotes(entries: Array<{ id: string; notes: string }>): Pro
     const clean = text.replace(/```json|```/g, '').trim();
     return JSON.parse(clean) as string[];
   } catch {
-    console.error('LLM parse error:', text);
+    log.error('LLM parse error:', text);
     return [];
   }
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-async function main() {
+async function solveTask() {
+  log.info('=== Evaluation agent started ===\n');
+
   // ── 1. Download sensors.zip ──────────────────────────────────────────────
   if (!fs.existsSync(ZIP_PATH)) {
-    console.log('Downloading sensors.zip...');
+    log.info('Downloading sensors.zip...');
     await downloadFile(S03E01.SENSORS_URL, ZIP_PATH);
-    console.log('Downloaded.');
+    log.info('Downloaded.');
   } else {
-    console.log('sensors.zip already cached.');
+    log.info('sensors.zip already cached.');
   }
 
   // ── 2. Extract ───────────────────────────────────────────────────────────
   if (!fs.existsSync(EXTRACT_DIR)) {
-    console.log('Extracting...');
+    log.info('Extracting...');
     execSync(`unzip -q "${ZIP_PATH}" -d "${EXTRACT_DIR}"`);
-    console.log('Extracted.');
+    log.info('Extracted.');
   }
 
   // ── 3. Load all JSON files ───────────────────────────────────────────────
   const files = fs.readdirSync(EXTRACT_DIR).filter((f) => f.endsWith('.json'));
-  console.log(`Found ${files.length} JSON files.`);
+  log.info(`Found ${files.length} JSON files.`);
 
   const anomalousIds = new Set<string>();
   const anomalyReasons = new Map<string, string>(); // id → reason (for debug)
@@ -204,7 +206,7 @@ async function main() {
     try {
       data = JSON.parse(raw);
     } catch {
-      console.warn(`Cannot parse ${file}, flagging as anomaly.`);
+      log.error(`Cannot parse ${file}, flagging as anomaly.`);
       anomalousIds.add(id);
       anomalyReasons.set(id, 'JSON parse error');
       continue;
@@ -220,12 +222,12 @@ async function main() {
     }
   }
 
-  console.log(`Programmatic anomalies: ${anomalousIds.size}`);
-  console.log('\n── Programmatic anomaly details ──');
+  log.info(`Programmatic anomalies: ${anomalousIds.size}`);
+  log.info('\n── Programmatic anomaly details ──');
   for (const [id, reason] of [...anomalyReasons.entries()].sort()) {
-    console.log(`  ${id}: ${reason}`);
+    log.info(`  ${id}: ${reason}`);
   }
-  console.log(`\nClean files for LLM note check: ${cleanEntries.length}`);
+  log.info(`\nClean files for LLM note check: ${cleanEntries.length}`);
 
   // ── 5. Deduplicate notes before LLM ─────────────────────────────────────
   // Group identical notes → send one representative per unique note text.
@@ -236,7 +238,7 @@ async function main() {
     noteToIds.get(key)!.push(id);
   }
 
-  console.log(`Unique note texts: ${noteToIds.size} (from ${cleanEntries.length} clean files)`);
+  log.info(`Unique note texts: ${noteToIds.size} (from ${cleanEntries.length} clean files)`);
 
   // Build deduplicated list: one entry per unique note (use first ID as representative)
   const deduped = Array.from(noteToIds.entries()).map(([note, ids]) => ({
@@ -251,7 +253,7 @@ async function main() {
 
   for (let i = 0; i < deduped.length; i += BATCH_SIZE) {
     const batch = deduped.slice(i, i + BATCH_SIZE);
-    console.log(
+    log.info(
       `LLM batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(deduped.length / BATCH_SIZE)} (${batch.length} unique notes)...`,
     );
     const flagged = await llmCheckNotes(batch.map((e) => ({ id: e.id, notes: e.notes })));
@@ -261,30 +263,30 @@ async function main() {
   }
 
   // ── 7. Expand deduplicated LLM results back to ALL matching IDs ──────────
-  console.log(`\n── LLM flagged representative IDs ──`);
-  console.log(llmAnomalousRepIds);
+  log.info(`\n── LLM flagged representative IDs ──`);
+  log.info(JSON.stringify(llmAnomalousRepIds));
 
   const repIdToEntry = new Map(deduped.map((e) => [e.id, e]));
   for (const repId of llmAnomalousRepIds) {
     const entry = repIdToEntry.get(repId);
     if (entry) {
-      console.log(
+      log.info(
         `  Rep ${repId} → expanding to ${entry.ids.length} file(s): ${entry.ids.join(', ')}`,
       );
-      console.log(`    Note: "${entry.notes.slice(0, 80)}..."`);
+      log.info(`    Note: "${entry.notes.slice(0, 80)}..."`);
       for (const id of entry.ids) {
         anomalousIds.add(id);
       }
     } else {
-      console.warn(`  WARNING: LLM returned unknown rep ID "${repId}" — not in deduped map!`);
+      log.error(`WARNING: LLM returned unknown rep ID "${repId}" — not in deduped map!`);
     }
   }
 
-  console.log(`Total anomalous files: ${anomalousIds.size}`);
+  log.info(`Total anomalous files: ${anomalousIds.size}`);
 
   // ── 8. Submit to /verify ─────────────────────────────────────────────────
   const answer = Array.from(anomalousIds).sort();
-  console.log('Submitting answer...');
+  log.info('Submitting answer...');
 
   const payload = {
     apikey: process.env.AIDEVS_API_KEY,
@@ -292,18 +294,18 @@ async function main() {
     answer: { recheck: answer },
   };
 
-  console.log('Sample IDs:', answer.slice(0, 10));
-  console.log('Total IDs in answer:', answer.length);
+  log.info(`Sample IDs: ${answer.slice(0, 10).join(', ')}`);
+  log.info(`Total IDs in answer: ${answer.length}`);
 
   try {
     const res = await axios.post(VERIFY_URL, payload);
-    console.log('Response:', JSON.stringify(res.data, null, 2));
+    log.result('Response', JSON.stringify(res.data, null, 2));
   } catch (err: any) {
-    console.error('Submit error:', err.response?.data ?? err.message);
+    log.error('Submit error:', err.response?.data ?? err.message);
   }
 }
 
-main().catch((err) => {
-  console.error('Fatal:', err);
+solveTask().catch((err) => {
+  log.error('Fatal:', err);
   process.exit(1);
 });

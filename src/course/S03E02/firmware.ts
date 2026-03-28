@@ -9,6 +9,7 @@
 import axios from 'axios';
 import 'dotenv/config';
 import OpenAI from 'openai';
+import { log, openrouter } from 'src/shared/agents';
 import { S03E02, VERIFY_URL } from 'src/shared/api';
 
 const MODEL = 'anthropic/claude-sonnet-4-6'; // explicitly required by task hints
@@ -47,12 +48,12 @@ async function runShell(cmd: string): Promise<string> {
     const body = err.response?.data;
 
     if (status === 429) {
-      console.warn('[RATE LIMIT] Waiting 5s...');
+      log.error('[RATE LIMIT] Waiting 5s...');
       await new Promise((r) => setTimeout(r, 5_000));
       return '[RATE LIMIT] Waited 5s. Please retry the same command.';
     }
     if (status === 503) {
-      console.warn('[503] Waiting 3s...');
+      log.error('[503] Waiting 3s...');
       await new Promise((r) => setTimeout(r, 3_000));
       return '[503] Service unavailable, waited 3s. Please retry.';
     }
@@ -61,7 +62,7 @@ async function runShell(cmd: string): Promise<string> {
       const banMsg = JSON.stringify(body);
       const seconds = banMsg.match(/(\d+)\s*sec/i)?.[1];
       const waitMs = seconds ? parseInt(seconds) * 1_000 + 1_000 : 30_000;
-      console.warn(`[BAN] Waiting ${waitMs / 1000}s before continuing...`);
+      log.error(`[BAN] Waiting ${waitMs / 1000}s before continuing...`);
       await new Promise((r) => setTimeout(r, waitMs));
       return `[BAN] Served ${waitMs / 1000}s ban. ${banMsg} — You may now retry.`;
     }
@@ -157,10 +158,6 @@ Strict rules:
 
 // ── Agent loop ────────────────────────────────────────────────────────────────
 
-const openrouter = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY!,
-});
 
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   { role: 'system', content: SYSTEM },
@@ -170,13 +167,13 @@ const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   },
 ];
 
-async function run() {
-  console.log(`=== Firmware agent started (model: ${MODEL}) ===\n`);
+async function solveTask() {
+  log.info(`=== Firmware agent started (model: ${MODEL}) ===\n`);
   let iteration = 0;
   const MAX = 80; // increased from 60
 
   while (iteration++ < MAX) {
-    console.log(`\n─── Iteration ${iteration} ───`);
+    log.info(`\n─── Iteration ${iteration} ───`);
 
     const response = await openrouter.chat.completions.create({
       model: MODEL,
@@ -189,20 +186,20 @@ async function run() {
     messages.push(msg);
 
     if (msg.content) {
-      console.log(`Agent: ${msg.content.slice(0, 500)}`);
+      log.info(`Agent: ${msg.content.slice(0, 500)}`);
     }
 
     // ECCS code: exactly 40 alphanumeric chars after dash
     const eccsMatch = msg.content?.match(/ECCS-[a-zA-Z0-9]{40}/);
     if (eccsMatch && !msg.tool_calls?.length) {
-      console.log('\n=== ECCS code found in text, submitting... ===');
+      log.info('\n=== ECCS code found in text, submitting... ===');
       const result = await submitAnswer(eccsMatch[0]);
-      console.log('Verify result:', result);
+      log.result('Verify result', result);
       return;
     }
 
     if (!msg.tool_calls?.length) {
-      console.log('[Agent] No tool calls — stopping.');
+      log.info('[Agent] No tool calls — stopping.');
       break;
     }
 
@@ -212,7 +209,7 @@ async function run() {
       const { name, arguments: argsRaw } = call.function;
       const args = JSON.parse(argsRaw);
 
-      console.log(`\n[Tool] ${name}(${argsRaw.slice(0, 200)})`);
+      log.info(`\n[Tool call] ${name}(${argsRaw.slice(0, 200)})`);
 
       let result: string;
 
@@ -221,12 +218,12 @@ async function run() {
         result = await runShell(args.cmd);
       } else if (name === 'verify') {
         result = await submitAnswer(args.code);
-        console.log('\n=== VERIFY RESULT ===\n', result);
+        log.result('=== VERIFY RESULT ===', result);
       } else {
         result = `Unknown tool: ${name}`;
       }
 
-      console.log(`[Result] ${result.slice(0, 600)}`);
+      log.info(`[Tool result] ${result.slice(0, 600)}`);
 
       messages.push({
         role: 'tool',
@@ -236,10 +233,10 @@ async function run() {
     }
   }
 
-  console.error(`\nTask not completed within ${MAX} iterations.`);
+  log.error(`\nTask not completed within ${MAX} iterations.`);
 }
 
-run().catch((err) => {
-  console.error('Fatal:', err);
+solveTask().catch((err) => {
+  log.error('Fatal:', err);
   process.exit(1);
 });

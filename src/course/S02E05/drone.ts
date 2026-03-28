@@ -242,7 +242,7 @@ RULES:
 - flyToLocation must always be the last instruction.
 - Stop immediately when {FLG:...} appears anywhere in the response.`;
 
-async function solve(): Promise<void> {
+async function solveTask(): Promise<void> {
   log.info('=== Drone mission started (3-model architecture) ===');
   log.info(`  Orchestrator : ${ORCHESTRATOR_MODEL}`);
   log.info(`  Vision agent : ${VISION_MODEL}`);
@@ -282,7 +282,7 @@ async function solve(): Promise<void> {
 
       const flagMatch = msg.content.match(/\{FLG:[^}]+\}/);
       if (flagMatch) {
-        log.info('🎯 FLAG FOUND:', flagMatch[0]);
+        log.result('=== FLAG FOUND ===', flagMatch[0]);
         return;
       }
     }
@@ -305,7 +305,7 @@ async function solve(): Promise<void> {
 
         const flagMatch = toolResult.match(/\{FLG:[^}]+\}/);
         if (flagMatch) {
-          log.info('🎯 FLAG FOUND (in tool result):', flagMatch[0]);
+          log.result('=== FLAG FOUND (in tool result) ===', flagMatch[0]);
         }
       } catch (err: any) {
         toolResult = `ERROR: ${err.message}`;
@@ -340,7 +340,7 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
   }
 }
 
-solve().catch((err) => {
+solveTask().catch((err) => {
   log.error('Fatal error:', err);
   process.exit(1);
 });
