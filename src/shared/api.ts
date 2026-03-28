@@ -35,6 +35,10 @@ export const S02E04 = {
   MAILBOX: `${BASE_URL}/api/zmail`,
 };
 
+export const S03E01 = {
+  SENSORS_URL: `${BASE_URL}/dane/sensors.zip`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
