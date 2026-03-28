@@ -39,6 +39,10 @@ export const S03E01 = {
   SENSORS_URL: `${BASE_URL}/dane/sensors.zip`,
 };
 
+export const S03E02 = {
+  SHELL_URL: `${BASE_URL}/api/shell`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================

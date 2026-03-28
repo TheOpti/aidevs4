@@ -20,6 +20,9 @@ export const MODEL_DEEPSEEK = 'deepseek/deepseek-v3.2';
 /** Google Gemini Flash 1.5 with vision capabilities */
 export const MODEL_GEMINI_VISION = 'google/gemini-2.0-flash-001';
 
+/** Anthropic Claude 3.5 Sonnet */
+export const MODEL_CLAUDE_3_5_SONNET = 'anthropic/claude-3.5-sonnet';
+
 // ============================================================
 // OpenAI client factory
 // ============================================================
