@@ -43,6 +43,10 @@ export const S03E02 = {
   SHELL_URL: `${BASE_URL}/api/shell`,
 };
 
+export const S03E03 = {
+  REACTOR_URL: `${BASE_URL}/reactor_preview.html`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
