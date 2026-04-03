@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import OpenAI from 'openai';
 import { log, MODEL_DEEPSEEK, openrouter } from 'src/shared/agents';
+import { BASE_URL, VERIFY_URL } from 'src/shared/api';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const API_KEY = process.env.AIDEVS_API_KEY ?? '';
-const HUB_URL = '${process.env.BASE_URL}/verify';
-const IMAGE_URL = `${process.env.BASE_URL}/data/${API_KEY}/drone.png`;
+const IMAGE_URL = `${BASE_URL}/data/${API_KEY}/drone.png`;
 const TARGET_ID = 'PWR6132PL';
 const TASK = 'drone';
 
@@ -127,7 +127,7 @@ async function subagentSendToDrone(instructions: string[]): Promise<string> {
   log.info(`[Subagent:Hub] Sending instructions via GPT-4o-mini: ${JSON.stringify(instructions)}`);
 
   // Step 1: actually call the drone API
-  const res = await fetch(HUB_URL, {
+  const res = await fetch(VERIFY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

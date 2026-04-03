@@ -47,6 +47,10 @@ export const S03E03 = {
   REACTOR_URL: `${BASE_URL}/reactor_preview.html`,
 };
 
+export const S03E04 = {
+  DATA: `${BASE_URL}/dane/s03e04_csv`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================

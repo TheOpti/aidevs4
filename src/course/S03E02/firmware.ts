@@ -117,7 +117,7 @@ Returns the command output as a string.`,
     type: 'function',
     function: {
       name: 'verify',
-      description: 'Submit the ECCS-... code to Centrala /verify to complete the task.',
+      description: 'Submit the ECCS-... code to /verify to complete the task.',
       parameters: {
         type: 'object',
         properties: {
@@ -157,7 +157,6 @@ Strict rules:
 - ALWAYS issue the next shell command immediately after reading output. Do not stop to explain.`;
 
 // ── Agent loop ────────────────────────────────────────────────────────────────
-
 
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   { role: 'system', content: SYSTEM },
