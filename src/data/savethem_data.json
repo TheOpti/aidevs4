@@ -1,0 +1,206 @@
+{
+  "map": [
+    [
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      "W"
+    ],
+    [
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      "W",
+      "."
+    ],
+    [
+      ".",
+      "T",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      "W",
+      ".",
+      "."
+    ],
+    [
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      ".",
+      ".",
+      "."
+    ],
+    [
+      ".",
+      ".",
+      "T",
+      ".",
+      ".",
+      ".",
+      "W",
+      ".",
+      "G",
+      "."
+    ],
+    [
+      ".",
+      ".",
+      ".",
+      ".",
+      "R",
+      ".",
+      "W",
+      ".",
+      ".",
+      "."
+    ],
+    [
+      ".",
+      ".",
+      ".",
+      "R",
+      "R",
+      ".",
+      "W",
+      "W",
+      ".",
+      "."
+    ],
+    [
+      "S",
+      "R",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      ".",
+      "."
+    ],
+    [
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      "W",
+      ".",
+      "."
+    ],
+    [
+      ".",
+      ".",
+      ".",
+      ".",
+      ".",
+      "W",
+      "W",
+      ".",
+      ".",
+      "."
+    ]
+  ],
+  "vehicles": [
+    {
+      "name": "rocket",
+      "fuel_per_move": 1,
+      "food_per_move": 0.1,
+      "cannot_cross": [
+        "water",
+        "cliffs",
+        "chasms"
+      ]
+    },
+    {
+      "name": "horse",
+      "fuel_per_move": 0,
+      "food_per_move": 1.6,
+      "cannot_cross": []
+    },
+    {
+      "name": "walk",
+      "fuel_per_move": 0,
+      "food_per_move": 2.5,
+      "cannot_cross": []
+    },
+    {
+      "name": "car",
+      "fuel_per_move": 0.7,
+      "food_per_move": 1,
+      "cannot_cross": [
+        "water"
+      ]
+    }
+  ],
+  "legend": {
+    "S": {
+      "meaning": "starting position",
+      "passable_by": [
+        "rocket",
+        "horse",
+        "walk",
+        "car"
+      ]
+    },
+    "G": {
+      "meaning": "goal destination",
+      "passable_by": [
+        "rocket",
+        "horse",
+        "walk",
+        "car"
+      ]
+    },
+    ".": {
+      "meaning": "normal terrain",
+      "passable_by": [
+        "rocket",
+        "horse",
+        "walk",
+        "car"
+      ]
+    },
+    "T": {
+      "meaning": "tree tile (increases fuel consumption by 0.2 for powered travel)",
+      "passable_by": [
+        "rocket",
+        "horse",
+        "walk",
+        "car"
+      ]
+    },
+    "W": {
+      "meaning": "water",
+      "passable_by": [
+        "horse",
+        "walk"
+      ]
+    },
+    "R": {
+      "meaning": "rocks that block movement completely",
+      "passable_by": []
+    }
+  },
+  "extra_notes": "1. Only horse and walk can cross water tiles. Rocket and car cannot enter water tiles.\n2. Rocks (R) block ALL movement completely - no vehicle or walk mode can pass through them.\n3. Tree tiles (T) increase fuel consumption by 0.2 units for powered vehicles (rocket, car) but don't affect walk or horse.\n4. Traveler can dismount from a vehicle and continue on foot using the \"dismount\" command.\n5. Vehicle must be chosen at departure and cannot be changed later except by dismounting to walk.\n6. The map orientation is standard with north at the top.\n7. Starting position is S at coordinates (row 7, col 0), goal is G at coordinates (row 4, col 8)."
+}

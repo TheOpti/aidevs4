@@ -23,6 +23,9 @@ export const MODEL_GEMINI_VISION = 'google/gemini-2.0-flash-001';
 /** Anthropic Claude 3.5 Sonnet */
 export const MODEL_CLAUDE_3_5_SONNET = 'anthropic/claude-3.5-sonnet';
 
+/** OpenAI GPT-5 Mini */
+export const MODEL_GPT_5_MINI = 'openai/gpt-5-mini';
+
 // ============================================================
 // OpenAI client factory
 // ============================================================

@@ -51,6 +51,10 @@ export const S03E04 = {
   DATA: `${BASE_URL}/dane/s03e04_csv`,
 };
 
+export const S03E05 = {
+  TOOL_SEARCH: `${BASE_URL}/api/toolsearch`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
