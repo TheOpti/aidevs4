@@ -55,6 +55,10 @@ export const S03E05 = {
   TOOL_SEARCH: `${BASE_URL}/api/toolsearch`,
 };
 
+export const S04E01 = {
+  OKO_API: process.env.OKO_API,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================

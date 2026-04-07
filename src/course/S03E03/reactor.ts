@@ -1,7 +1,7 @@
 import axios from 'axios';
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { log, MODEL_CLAUDE_3_5_SONNET, openrouter } from 'src/shared/agents';
+import { log, MODEL_CLAUDE_SONNET, openrouter } from 'src/shared/agents';
 import { VERIFY_URL } from 'src/shared/api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ async function solveTask() {
     log.info(`\n─── Iteration ${iteration} ───`);
 
     const response = await openrouter.chat.completions.create({
-      model: MODEL_CLAUDE_3_5_SONNET,
+      model: MODEL_CLAUDE_SONNET,
       messages,
       tools,
       tool_choice: 'auto',
