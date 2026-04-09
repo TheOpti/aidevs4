@@ -1,7 +1,7 @@
 import axios from 'axios';
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { log, MODEL_CLAUDE_SONNET, openrouter } from 'src/shared/agents';
+import { log, MODEL_DEEPSEEK, openrouter } from 'src/shared/agents';
 import { VERIFY_URL } from 'src/shared/api';
 
 // ── API helper ────────────────────────────────────────────────────────────────
@@ -169,20 +169,16 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 
 // ── System prompt ─────────────────────────────────────────────────────────────
 
-const SYSTEM = `You are an autonomous agent solving the "windpower" task for an AI engineer course.
-You control a wind turbine that powers an electricity plant. You must configure the turbine schedule
+const SYSTEM = `You control a wind turbine that powers an electricity plant. You must configure the turbine schedule
 within a 40-SECOND TIME LIMIT, so parallel execution is CRITICAL.
 
 ## Workflow (follow exactly in this order)
-
-1. Call windpower_action(action="help") to learn all available async actions and their parameters.
-2. Call windpower_action(action="start") to open the service window.
-3. In ONE queue_tasks_parallel call, fire ALL of these simultaneously:
-   - weatherForecast (get forecast data)
-   - turbineStatus   (get turbine specs: max wind speed, etc.)
-   - powerPlantStatus (get required power / energy deficit)
-   Use whatever action names "help" reveals.
-4. Call poll_results([...all taskIds from step 3...]) to retrieve all results at once.
+1. Call windpower_action(action="start") to open the service window.
+2. Call windpower_action(action="help") to learn all available async actions and their parameters.
+3. In ONE queue_tasks_parallel call, fire ALL of these simultaneously whatever action names "help" reveals
+4. Call poll_results([...all task names from step 3...]) to retrieve all results at once.
+  - action is "getResults"
+  - task names are ("param"): "weather", "turbinecheck", "powerplantcheck", "documentation"
 5. Analyze results:
    - Find ALL forecast hours where wind > turbine's max safe wind speed → these are STORM hours.
      At storm hours: pitchAngle=90 (feathered), turbineMode="idle"
@@ -229,7 +225,7 @@ async function solveTask() {
     log.info(`\n─── Iteration ${iteration} ───`);
 
     const response = await openrouter.chat.completions.create({
-      model: MODEL_CLAUDE_SONNET,
+      model: MODEL_DEEPSEEK,
       messages,
       tools,
       tool_choice: 'auto',
@@ -239,7 +235,7 @@ async function solveTask() {
     messages.push(msg);
 
     if (msg.content) {
-      log.info(`Agent reasoning: ${msg.content.slice(0, 800)}`);
+      log.info(`Agent reasoning: ${msg?.content?.slice(0, 800)}`);
     }
 
     if (!msg.tool_calls?.length) {
@@ -252,7 +248,7 @@ async function solveTask() {
 
       const { name, arguments: argsRaw } = call.function;
       const args = JSON.parse(argsRaw);
-      log.info(`\n[Tool] ${name}(${argsRaw.slice(0, 300)})`);
+      log.info(`\n[Tool] ${name}(${argsRaw?.slice(0, 300)})`);
 
       let result: string;
 
@@ -271,7 +267,7 @@ async function solveTask() {
         log.error(`[Tool error] ${name}: ${err}`);
       }
 
-      log.info(`[Tool result preview] ${result.slice(0, 500)}`);
+      log.info(`[Tool result preview] ${result?.slice(0, 500)}`);
       messages.push({ role: 'tool', tool_call_id: call.id, content: result });
     }
   }
