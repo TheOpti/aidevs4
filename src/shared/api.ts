@@ -63,6 +63,10 @@ export const S04E04 = {
   FILESYSTEM_URL: `${BASE_URL}/dane/natan_notes.zip `,
 };
 
+export const S04E05 = {
+  FOOD_URL: `${BASE_URL}/dane/food4cities.json`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
