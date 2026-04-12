@@ -62,7 +62,6 @@ const SENSOR_TO_FIELD: Record<string, MeasurementField> = {
 const ALL_FIELDS = Object.values(SENSOR_TO_FIELD) as MeasurementField[];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
 function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);

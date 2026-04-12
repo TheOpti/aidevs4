@@ -59,6 +59,10 @@ export const S04E01 = {
   OKO_API: process.env.OKO_API,
 };
 
+export const S04E04 = {
+  FILESYSTEM_URL: `${BASE_URL}/dane/natan_notes.zip `,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
