@@ -14,6 +14,12 @@ export const MODEL_GPT_OSS = 'openai/gpt-oss-20b';
 /** Google Gemma 3 with vision capabilities */
 export const MODEL_GEMMA = 'google/gemma-3-12b';
 
+/** Google Gemma E4B (using 26B since e4b does not exist as vision model) */
+export const MODEL_GEMMA4_E4B = 'google/gemma-4-26b-a4b-it';
+
+/** Google Gemma 4 26B MoE — powerful reasoning, ~3.8B active params */
+export const MODEL_GEMMA4_26B = 'google/gemma-4-26b-a4b-it';
+
 /** DeepSeek v 3.2 */
 export const MODEL_DEEPSEEK = 'deepseek/deepseek-v3.2';
 
