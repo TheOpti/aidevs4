@@ -32,6 +32,12 @@ export const MODEL_CLAUDE_SONNET = 'anthropic/claude-sonnet-4.5';
 /** OpenAI GPT-5 Mini */
 export const MODEL_GPT_5_MINI = 'openai/gpt-5-mini';
 
+/** Voice model */
+export const MODEL_VOICE = 'tts-1';
+
+/** Whisper model */
+export const MODEL_WHISPER = 'openai/whisper-large-v3';
+
 // ============================================================
 // OpenAI client factory
 // ============================================================
