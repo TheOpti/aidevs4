@@ -67,6 +67,12 @@ export const S04E05 = {
   FOOD_URL: `${BASE_URL}/dane/food4cities.json`,
 };
 
+export const S05E04 = {
+  GOINGTHERE_PREVIEW: `${BASE_URL}/goingthere_preview`,
+  MESSAGE_API: `${BASE_URL}/api/getmessage`,
+  FREQUENCY_SCANNER_API: `${BASE_URL}/api/frequencyScanner`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================
