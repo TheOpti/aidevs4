@@ -1,13 +1,8 @@
 import axios from 'axios';
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { MODEL_CLAUDE_SONNET, openrouter } from 'src/shared/agents';
+import { log, MODEL_CLAUDE_SONNET, openrouter } from 'src/shared/agents';
 import { VERIFY_URL } from 'src/shared/api';
-
-const log = {
-  info: (...a: unknown[]) => console.log('[INFO]', ...a),
-  error: (...a: unknown[]) => console.error('[ERR]', ...a),
-};
 
 // ── API helper ────────────────────────────────────────────────────────────────
 
@@ -256,7 +251,7 @@ Po każdej grupie akcji: getLogs() by sprawdzić punkty i pozycje.`;
 // ── Agent loop ────────────────────────────────────────────────────────────────
 
 async function solveTask() {
-  log.info('=== Domatowo task starting ===\n');
+  log.info('=== Domatowo task starting ===');
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: 'system', content: SYSTEM },
@@ -275,7 +270,7 @@ async function solveTask() {
   let taskDone = false;
 
   while (iteration++ < MAX && !taskDone) {
-    log.info(`\n─── Iteration ${iteration} ───`);
+    log.step(iteration, 'Iteration');
 
     const response = await openrouter.chat.completions.create({
       model: MODEL_CLAUDE_SONNET,
@@ -297,7 +292,7 @@ async function solveTask() {
       if (call.type !== 'function') continue;
       const { name, arguments: argsRaw } = call.function;
       const args = JSON.parse(argsRaw || '{}');
-      log.info(`[Tool] ${name}(${argsRaw?.slice(0, 400)})`);
+      log.tool(`${name}`, args);
 
       let result: string;
       try {
@@ -328,11 +323,11 @@ async function solveTask() {
             break;
           case 'callHelicopter':
             result = await apiCallHelicopter(args.destination);
-            log.info('🚁 HELICOPTER:', result);
+            log.result('🚁 HELICOPTER:', result);
             try {
               const p = JSON.parse(result);
               if (p?.flag || p?.code === 0 || JSON.stringify(p).includes('flag')) {
-                log.info('✅ FLAG OBTAINED:', result);
+                log.result('✅ FLAG OBTAINED:', result);
                 taskDone = true;
               }
             } catch {}
@@ -342,10 +337,10 @@ async function solveTask() {
         }
       } catch (err: unknown) {
         result = `Tool error: ${String(err)}`;
-        log.error(`[Tool error] ${name}: ${err}`);
+        log.error(`Tool error: ${name}`, err);
       }
 
-      log.info(`[Result] ${result?.slice(0, 600)}`);
+      log.result(`Result for ${name}`, result?.slice(0, 600));
       messages.push({ role: 'tool', tool_call_id: call.id, content: result! });
     }
   }

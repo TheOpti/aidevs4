@@ -1,7 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import 'dotenv/config';
-import { MODEL_DEEPSEEK, openrouter } from 'src/shared/agents';
+import { log, MODEL_DEEPSEEK, openrouter } from 'src/shared/agents';
 import { BASE_URL, VERIFY_URL } from 'src/shared/api';
 
 const ENDPOINTS = {
@@ -47,7 +47,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 7, delayMs = 800): P
     } catch (err) {
       if (err instanceof GameCrashError) throw err;
       if (attempt === retries) throw err;
-      console.warn(`  [retry ${attempt}/${retries}] ${String(err).slice(0, 120)}`);
+      log.info(`[retry ${attempt}/${retries}] ${String(err).slice(0, 120)}`);
       await new Promise((r) => setTimeout(r, delayMs * attempt)); // exponential back-off
     }
   }
@@ -69,7 +69,7 @@ async function sendCommand(command: string): Promise<GameState> {
     } catch (err: any) {
       const body = err.response?.data;
       const status = err.response?.status;
-      console.error(`  [api] HTTP ${status} error — body: ${JSON.stringify(body).slice(0, 300)}`);
+      log.error(`HTTP ${status} error — body: ${JSON.stringify(body).slice(0, 300)}`);
 
       if (looksLikeCrash(body)) throw new GameCrashError(body);
 
@@ -86,7 +86,7 @@ async function sendCommand(command: string): Promise<GameState> {
 
     // Flag response — game is won, no player field expected
     if (!d.player && JSON.stringify(d).includes('FLG:')) {
-      console.log(`\n🏆 FLAG RECEIVED: ${d.message}`);
+      log.info(`FLAG RECEIVED: ${d.message}`);
       // Return a synthetic state so the loop exits
       return {
         player: { row: 99, col: 99 },
@@ -97,7 +97,7 @@ async function sendCommand(command: string): Promise<GameState> {
     }
 
     if (!d.player) {
-      console.warn(`  [api] No player in body: ${JSON.stringify(d).slice(0, 300)}`);
+      log.info(`No player in body: ${JSON.stringify(d).slice(0, 300)}`);
       throw new Error(`Unexpected response (no player): ${JSON.stringify(d).slice(0, 200)}`);
     }
 
@@ -217,7 +217,7 @@ async function checkFrequencyScanner(): Promise<ScanResult | TrackedResult> {
     } catch (err: any) {
       const status = err.response?.status;
       if (status === 502) {
-        console.warn(`  [scanner] 502 received, retrying (${attempt}/10)...`);
+        log.info(`502 received, retrying (${attempt}/10)...`);
         await new Promise((r) => setTimeout(r, 500 * attempt));
         continue;
       }
@@ -225,19 +225,19 @@ async function checkFrequencyScanner(): Promise<ScanResult | TrackedResult> {
     }
   }
 
-  console.log(`  [scanner] RAW: ${raw.slice(0, 250)}`);
+  log.info(`Scanner RAW: ${raw.slice(0, 250)}`);
 
   // ── Safe? ─────────────────────────────────────────────────────────────────
   // A "clear" response is always plain text with no JSON object.
   // The word itself may be mangled ("cLEeeEar") so don't rely on substring match —
   // instead check for the presence of a JSON object opener '{'.
   if (!raw.includes('{')) {
-    console.log('  [scanner] No JSON object — clear.');
+    log.info('Scanner: No JSON object — clear.');
     return { isTracked: false };
   }
 
   // ── Tracked — extract frequency + detectionCode ───────────────────────────
-  console.log('  [scanner] Tracking signal detected — extracting fields...');
+  log.info('Scanner: Tracking signal detected — extracting fields...');
 
   // 1. Try standard JSON parse (in case it happens to be valid)
   try {
@@ -255,7 +255,7 @@ async function checkFrequencyScanner(): Promise<ScanResult | TrackedResult> {
       parsed.betecti0nC0be;
 
     if (frequency !== undefined && detectionCode !== undefined) {
-      console.log(`  [scanner] Parsed via JSON — freq=${frequency}, code=${detectionCode}`);
+      log.info(`Parsed via JSON — freq=${frequency}, code=${detectionCode}`);
       return {
         isTracked: true,
         frequency: Number(frequency),
@@ -269,18 +269,14 @@ async function checkFrequencyScanner(): Promise<ScanResult | TrackedResult> {
   // 2. Regex fallback
   const regexResult = regexExtractScannerFields(raw);
   if (regexResult) {
-    console.log(
-      `  [scanner] Parsed via regex — freq=${regexResult.frequency}, code=${regexResult.detectionCode}`,
-    );
+    log.info(`Parsed via regex — freq=${regexResult.frequency}, code=${regexResult.detectionCode}`);
     return { isTracked: true, ...regexResult };
   }
 
   // 3. LLM sub-agent (handles any typo pattern we haven't seen before)
-  console.log('  [scanner] Falling back to LLM extraction...');
+  log.info('Scanner: Falling back to LLM extraction...');
   const llmResult = await llmExtractScannerFields(raw);
-  console.log(
-    `  [scanner] Parsed via LLM — freq=${llmResult.frequency}, code=${llmResult.detectionCode}`,
-  );
+  log.info(`Parsed via LLM — freq=${llmResult.frequency}, code=${llmResult.detectionCode}`);
   return { isTracked: true, ...llmResult };
 }
 
@@ -289,7 +285,7 @@ async function neutralizeRadar(frequency: number, detectionCode: string): Promis
     .createHash('sha1')
     .update(detectionCode + 'disarm')
     .digest('hex');
-  console.log(`  [radar] Disarming — freq=${frequency}, code=${detectionCode}, hash=${disarmHash}`);
+  log.info(`Radar: Disarming — freq=${frequency}, code=${detectionCode}, hash=${disarmHash}`);
 
   await withRetry(async () => {
     const { data } = await axios.post(ENDPOINTS.FREQUENCY_SCANNER_API, {
@@ -297,7 +293,7 @@ async function neutralizeRadar(frequency: number, detectionCode: string): Promis
       frequency,
       disarmHash,
     });
-    console.log('  [radar] Disarmed:', JSON.stringify(data).slice(0, 200));
+    log.info('Radar: Disarmed', JSON.stringify(data).slice(0, 200));
   });
 }
 
@@ -367,7 +363,7 @@ Reply with ONLY one word: ahead, port, or starboard.`,
   if (lower.includes('port') || lower.includes('left')) return 'port';
   if (lower.includes('starboard') || lower.includes('right')) return 'starboard';
 
-  console.warn(`  [hint] Could not classify: "${hint}", defaulting to ahead`);
+  log.info(`Could not classify hint: "${hint}", defaulting to ahead`);
   return 'ahead';
 }
 
@@ -422,7 +418,7 @@ function decideMove(
   });
 
   if (safe.length === 0) {
-    console.error('  [move] ⚠ No safe moves available — this should never happen!');
+    log.error('⚠ No safe moves available — this should never happen!');
     return 'go';
   }
 
@@ -434,8 +430,8 @@ function decideMove(
   });
 
   const chosen = safe[0];
-  console.log(
-    `  [move] Options: ${safe.map((s) => `${s.move}→row${s.resultRow}`).join(', ')} | currentStone=row${currentStoneRow}, nextBlocked=row${nextColBlockedRow}`,
+  log.info(
+    `Move Options: ${safe.map((s) => `${s.move}→row${s.resultRow}`).join(', ')} | currentStone=row${currentStoneRow}, nextBlocked=row${nextColBlockedRow}`,
   );
   return chosen.move;
 }
@@ -443,14 +439,14 @@ function decideMove(
 // ── Main solver ───────────────────────────────────────────────────────────────
 
 async function solveTask() {
-  console.log('=== goingthere task starting ===\n');
+  log.info('=== goingthere task starting ===');
 
   // ── Step 1: Start game ───────────────────────────────────────────────────
-  console.log('[1] Starting game...');
+  log.step(1, 'Starting game...');
   let state = await sendCommand('start');
-  console.log(`  Player: col=${state.player.col}, row=${state.player.row}`);
-  console.log(`  Base:   col=${state.base.col},   row=${state.base.row}`);
-  console.log(`  Current col stone at row: ${state.currentColumn.stoneRow}\n`);
+  log.info(`Player: col=${state.player.col}, row=${state.player.row}`);
+  log.info(`Base:   col=${state.base.col},   row=${state.base.row}`);
+  log.info(`Current col stone at row: ${state.currentColumn.stoneRow}`);
 
   let currentStoneRow = state.currentColumn.stoneRow;
 
@@ -463,38 +459,38 @@ async function solveTask() {
   // ── Step 2: Navigate loop ─────────────────────────────────────────────────
   while (playerCol < baseCol) {
     step++;
-    console.log(`\n─── Step ${step} | Position col=${playerCol}, row=${playerRow} ───`);
+    log.step(step + 1, `Position col=${playerCol}, row=${playerRow}`);
 
     // 2a. Check frequency scanner
-    console.log('  [scanner] Checking...');
+    log.info('Scanner: Checking...');
     const scan = await checkFrequencyScanner();
     if (scan.isTracked) {
-      console.log(`  [scanner] TRACKED! frequency=${scan.frequency}, code=${scan.detectionCode}`);
+      log.info(`Scanner: TRACKED! frequency=${scan.frequency}, code=${scan.detectionCode}`);
       await neutralizeRadar(scan.frequency, scan.detectionCode);
     } else {
-      console.log('  [scanner] Clear.');
+      log.info('Scanner: Clear.');
     }
 
     // 2b. Get radio hint about next column
-    console.log('  [hint] Requesting...');
+    log.info('Hint: Requesting...');
     const hint = await getHint();
-    console.log(`  [hint] "${hint}"`);
+    log.info(`Hint: "${hint}"`);
 
     // 2c. Interpret hint
     const rockDir = await interpretHint(hint);
-    console.log(`  [hint] Interpreted rock direction: ${rockDir}`);
+    log.info(`Interpreted rock direction: ${rockDir}`);
 
     // 2d. Decide move
     const move = decideMove(playerRow, rockDir, baseRow, currentStoneRow);
-    console.log(`  [move] Executing: ${move}`);
+    log.info(`Executing move: ${move}`);
 
     // 2e. Execute move — GameCrashError signals crash or expired session
     try {
       state = await sendCommand(move);
     } catch (err) {
       if (err instanceof GameCrashError) {
-        console.error(`\n💥 CRASHED or session expired! ${err.message}`);
-        console.log('Restarting game from scratch...\n');
+        log.error(`💥 CRASHED or session expired! ${err.message}`);
+        log.info('Restarting game from scratch...');
         await new Promise((r) => setTimeout(r, 1500));
         return solveTask();
       }
@@ -504,30 +500,28 @@ async function solveTask() {
     playerRow = state.player.row;
     playerCol = state.player.col;
     currentStoneRow = state.currentColumn.stoneRow;
-    console.log(
-      `  [state] New position: col=${playerCol}, row=${playerRow} | stone at row=${currentStoneRow}`,
-    );
+    log.info(`New position: col=${playerCol}, row=${playerRow} | stone at row=${currentStoneRow}`);
 
-    if (state.message) console.log(`  [api] ${state.message}`);
+    if (state.message) log.api(`API: ${state.message}`);
 
     // Check if we reached the base
     if (playerCol >= baseCol) {
       if (playerRow === baseRow) {
-        console.log(`\n🎯 Reached Grudziądz base at row ${playerRow} — correct!`);
+        log.result(`🎯 Reached Grudziądz base at row ${playerRow} — correct!`);
       } else {
-        console.error(
-          `\n⚠️  Reached col ${playerCol} but landed on row ${playerRow}, expected row ${baseRow}!`,
+        log.error(
+          `⚠️ Reached col ${playerCol} but landed on row ${playerRow}, expected row ${baseRow}!`,
         );
       }
-      console.log('Response:', JSON.stringify(state, null, 2));
+      log.result('Final Response:', state);
       break;
     }
   }
 
-  console.log('\n=== Task complete ===');
+  log.info('=== Task complete ===');
 }
 
 solveTask().catch((err) => {
-  console.error('Fatal:', err);
+  log.error('Fatal', err);
   process.exit(1);
 });
