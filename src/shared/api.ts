@@ -73,6 +73,11 @@ export const S05E04 = {
   FREQUENCY_SCANNER_API: `${BASE_URL}/api/frequencyScanner`,
 };
 
+export const S05E05 = {
+  DOCS_URL: `${BASE_URL}/dane/timetravel.md`,
+  TIMETRAVEL_PREVIEW: `${BASE_URL}/timetravel_preview`,
+};
+
 // ============================================================
 // Send result to verification endpoint
 // ============================================================

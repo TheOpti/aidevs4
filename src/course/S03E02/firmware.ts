@@ -9,10 +9,8 @@
 import axios from 'axios';
 import 'dotenv/config';
 import OpenAI from 'openai';
-import { log, openrouter } from 'src/shared/agents';
+import { log, MODEL_CLAUDE_SONNET, openrouter } from 'src/shared/agents';
 import { S03E02, VERIFY_URL } from 'src/shared/api';
-
-const MODEL = 'anthropic/claude-sonnet-4-6'; // explicitly required by task hints
 
 // ── Shell helper ──────────────────────────────────────────────────────────────
 
@@ -24,7 +22,7 @@ async function runShell(cmd: string): Promise<string> {
       { timeout: 15_000 },
     );
 
-    console.debug('Shell response:', res.data);
+    log.info(`Shell response: ${JSON.stringify(res.data)}`);
 
     const data = res.data;
     if (typeof data === 'string') return data;
@@ -167,7 +165,7 @@ const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
 ];
 
 async function solveTask() {
-  log.info(`=== Firmware agent started (model: ${MODEL}) ===\n`);
+  log.info(`=== Firmware agent started (model: ${MODEL_CLAUDE_SONNET}) ===\n`);
   let iteration = 0;
   const MAX = 80; // increased from 60
 
@@ -175,7 +173,7 @@ async function solveTask() {
     log.info(`\n─── Iteration ${iteration} ───`);
 
     const response = await openrouter.chat.completions.create({
-      model: MODEL,
+      model: MODEL_CLAUDE_SONNET,
       messages,
       tools,
       tool_choice: 'auto',
